@@ -34,4 +34,35 @@ export interface GenerationOptions {
   quality: 'standard' | 'hd';
   style: 'vivid' | 'natural';
   n?: number; // Number of variations
+  lora?: LoRASettings;
+}
+
+export interface LoRASettings {
+  model?: string;
+  strength?: number; // 0-1
+  stylePreset?: string;
+  negativePrompt?: string;
+  cfgScale?: number; // 1-20
+  seed?: number;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: Date;
+  updatedAt: Date;
+  messages: ChatMessage[];
+  settings?: GenerationOptions;
+  starred?: boolean;
+}
+
+export interface ImageMetadata {
+  id: string;
+  prompt: string;
+  settings: GenerationOptions;
+  createdAt: Date;
+  tags?: string[];
+  favorite?: boolean;
+  sessionId?: string;
+  collections?: string[];
 }
