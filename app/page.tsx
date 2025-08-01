@@ -3,12 +3,21 @@
 import { useState, useEffect } from 'react';
 import { ChatContainer } from '@/components/chat-container';
 import { ChatInput } from '@/components/chat-input';
-import { ChatMessage, MessageStatus } from '@/lib/types';
+import { ChatMessage, MessageStatus, GenerationOptions } from '@/lib/types';
 import { toast } from 'sonner';
+import { CommandPalette } from '@/components/command-palette';
+import { GenerationOptionsPanel } from '@/components/generation-options';
+import { PromptTemplates } from '@/components/prompt-templates';
 
 export default function ImageGenerator() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [inputValue, setInputValue] = useState('');
+  const [generationOptions, setGenerationOptions] = useState<GenerationOptions>({
+    size: '1024x1024',
+    quality: 'hd',
+    style: 'vivid',
+  });
 
   // Load messages from localStorage on mount
   useEffect(() => {
@@ -40,7 +49,10 @@ export default function ImageGenerator() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ 
+          prompt,
+          ...generationOptions 
+        }),
       });
 
       const data = await response.json();
@@ -125,14 +137,48 @@ export default function ImageGenerator() {
     toast.success('Chat cleared');
   };
 
+  const handleExportChat = () => {
+    const chatContent = messages
+      .map((msg) => `${msg.role}: ${msg.content}`)
+      .join('\n\n');
+    const blob = new Blob([chatContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-export-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Chat exported');
+  };
+
+  const handleSelectTemplate = (template: string) => {
+    setInputValue(template);
+  };
+
+  const handleEnhancePrompt = async () => {
+    // For now, just add some enhancement words
+    if (inputValue) {
+      setInputValue(`${inputValue}, highly detailed, professional quality, stunning composition`);
+      toast.success('Prompt enhanced!');
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
+      {/* Command Palette */}
+      <CommandPalette
+        onNewChat={handleClearChat}
+        onClearChat={handleClearChat}
+        onExportChat={handleExportChat}
+        onOpenSettings={() => toast.info('Settings coming soon!')}
+      />
+
       {/* Header */}
       <header className="border-b px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold">AI Image Generator</h1>
-            <p className="text-sm text-muted-foreground">Powered by DALL-E 3</p>
+            <p className="text-sm text-muted-foreground">Powered by DALL-E 3 • Press ⌘K for commands</p>
           </div>
           {messages.length > 0 && (
             <button
@@ -155,12 +201,23 @@ export default function ImageGenerator() {
         />
       </div>
 
-      {/* Input */}
+      {/* Input Section */}
       <div className="max-w-4xl mx-auto w-full">
+        <PromptTemplates onSelectTemplate={handleSelectTemplate} />
+        <GenerationOptionsPanel
+          options={generationOptions}
+          onChange={setGenerationOptions}
+          onEnhancePrompt={handleEnhancePrompt}
+        />
         <ChatInput 
-          onSendMessage={handleSendMessage}
+          onSendMessage={(content) => {
+            handleSendMessage(content);
+            setInputValue('');
+          }}
           disabled={isGenerating}
           placeholder={isGenerating ? "Generating image..." : "Describe an image to generate..."}
+          value={inputValue}
+          onChange={setInputValue}
         />
       </div>
     </div>

@@ -22,6 +22,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { MessageContent } from './message-content';
+import { TypingIndicator } from './typing-indicator';
 
 interface ChatMessageProps {
   message: ChatMessageType;
@@ -95,7 +97,13 @@ export function ChatMessage({ message, onRegenerate, onDelete }: ChatMessageProp
               : 'bg-muted'
           )}
         >
-          <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+          {message.status === 'streaming' && !isUser ? (
+            <TypingIndicator />
+          ) : (
+            <div className="text-sm">
+              <MessageContent content={message.content} />
+            </div>
+          )}
         </div>
 
         {hasError && message.error && (

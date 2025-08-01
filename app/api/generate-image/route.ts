@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { prompt } = await request.json();
+  const { prompt, size = '1024x1024', quality = 'hd', style = 'vivid' } = await request.json();
 
   if (!prompt) {
     return Response.json({ error: 'Prompt is required' }, { status: 400 });
@@ -21,11 +21,11 @@ export async function POST(request: Request) {
     const { image } = await generateImage({
       model: openai.image('dall-e-3'),
       prompt,
-      size: '1024x1024',
+      size: size as any,
       providerOptions: {
         openai: { 
-          quality: 'hd',
-          style: 'vivid'
+          quality,
+          style
         },
       },
     });

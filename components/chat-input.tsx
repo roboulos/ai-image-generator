@@ -9,19 +9,31 @@ interface ChatInputProps {
   onSendMessage: (message: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  value?: string;
+  onChange?: (value: string) => void;
 }
 
 export function ChatInput({ 
   onSendMessage, 
   disabled = false,
-  placeholder = "Describe an image to generate..."
+  placeholder = "Describe an image to generate...",
+  value,
+  onChange
 }: ChatInputProps) {
   const [input, setInput] = useState('');
+  const inputValue = value !== undefined ? value : input;
+  const handleInputChange = (newValue: string) => {
+    if (onChange) {
+      onChange(newValue);
+    } else {
+      setInput(newValue);
+    }
+  };
 
   const handleSubmit = () => {
-    if (input.trim() && !disabled) {
-      onSendMessage(input.trim());
-      setInput('');
+    if (inputValue.trim() && !disabled) {
+      onSendMessage(inputValue.trim());
+      handleInputChange('');
     }
   };
 
@@ -35,8 +47,8 @@ export function ChatInput({
   return (
     <div className="flex gap-2 p-4 border-t bg-background">
       <Input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
+        value={inputValue}
+        onChange={(e) => handleInputChange(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
@@ -45,7 +57,7 @@ export function ChatInput({
       />
       <Button 
         onClick={handleSubmit}
-        disabled={disabled || !input.trim()}
+        disabled={disabled || !inputValue.trim()}
         size="icon"
       >
         <SendHorizontal className="h-4 w-4" />
