@@ -1,30 +1,39 @@
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Download, Sparkles, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChatContainer } from '@/components/chat-container';
+import { ChatInput } from '@/components/chat-input';
+import { ChatMessage, MessageStatus } from '@/lib/types';
 import { toast } from 'sonner';
 
 export default function ImageGenerator() {
-  const [prompt, setPrompt] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const generateImage = async () => {
-    if (!prompt.trim()) {
-      setError('Please enter a prompt');
-      return;
+  // Load messages from localStorage on mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem('chat-messages');
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages);
+        setMessages(parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        })));
+      } catch (error) {
+        console.error('Failed to load messages:', error);
+      }
     }
+  }, []);
 
-    setLoading(true);
-    setError('');
-    setImageUrl('');
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem('chat-messages', JSON.stringify(messages));
+    }
+  }, [messages]);
 
+  const generateImage = async (prompt: string, messageId: string) => {
     try {
       const response = await fetch('/api/generate-image', {
         method: 'POST',
@@ -40,125 +49,120 @@ export default function ImageGenerator() {
         throw new Error(data.error || 'Failed to generate image');
       }
 
-      setImageUrl(`data:${data.mediaType};base64,${data.image}`);
+      // Update message with generated image
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId 
+          ? {
+              ...msg,
+              status: 'completed' as MessageStatus,
+              image: {
+                url: `data:${data.mediaType};base64,${data.image}`,
+                mediaType: data.mediaType
+              }
+            }
+          : msg
+      ));
+
       toast.success('Image generated successfully!');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
+      
+      // Update message with error
+      setMessages(prev => prev.map(msg => 
+        msg.id === messageId 
+          ? {
+              ...msg,
+              status: 'error' as MessageStatus,
+              error: errorMessage
+            }
+          : msg
+      ));
+
       toast.error(errorMessage);
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
-  const downloadImage = () => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `ai-generated-${Date.now()}.png`;
-    link.click();
-    toast.success('Image downloaded!');
+  const handleSendMessage = async (content: string) => {
+    // Create user message
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content,
+      timestamp: new Date(),
+      status: 'completed'
+    };
+
+    // Create AI message
+    const aiMessage: ChatMessage = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: `Generating image for: "${content}"`,
+      timestamp: new Date(),
+      status: 'generating'
+    };
+
+    setMessages(prev => [...prev, userMessage, aiMessage]);
+    setIsGenerating(true);
+
+    // Generate image
+    await generateImage(content, aiMessage.id);
+  };
+
+  const handleRegenerate = async (prompt: string) => {
+    handleSendMessage(prompt);
+  };
+
+  const handleDelete = (id: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== id));
+    toast.success('Message deleted');
+  };
+
+  const handleClearChat = () => {
+    setMessages([]);
+    localStorage.removeItem('chat-messages');
+    toast.success('Chat cleared');
   };
 
   return (
-    <main className="min-h-screen bg-background py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold tracking-tight mb-2">
-            AI Image Generator
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Generate stunning images using DALL-E 3 and Vercel AI SDK
-          </p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Your Image</CardTitle>
-            <CardDescription>
-              Describe what you want to see and let AI bring it to life
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="prompt" className="text-sm font-medium">
-                Image Description
-              </label>
-              <Textarea
-                id="prompt"
-                placeholder="A futuristic cityscape at sunset with flying cars..."
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[100px] resize-none"
-              />
-            </div>
-
-            <Button 
-              onClick={generateImage}
-              disabled={loading}
-              className="w-full"
-              size="lg"
+    <div className="flex flex-col h-screen bg-background">
+      {/* Header */}
+      <header className="border-b px-4 py-3">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-lg font-semibold">AI Image Generator</h1>
+            <p className="text-sm text-muted-foreground">Powered by DALL-E 3</p>
+          </div>
+          {messages.length > 0 && (
+            <button
+              onClick={handleClearChat}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              {loading ? (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate Image
-                </>
-              )}
-            </Button>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {loading && (
-              <Card className="mt-6">
-                <CardContent className="pt-6">
-                  <div className="space-y-3">
-                    <Skeleton className="h-[400px] w-full rounded-lg" />
-                    <Skeleton className="h-10 w-full" />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {imageUrl && !loading && (
-              <Card className="mt-6">
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    <div className="relative rounded-lg overflow-hidden bg-muted">
-                      <img
-                        src={imageUrl}
-                        alt="Generated image"
-                        className="w-full h-auto"
-                      />
-                    </div>
-                    <Button
-                      onClick={downloadImage}
-                      variant="secondary"
-                      className="w-full"
-                    >
-                      <Download className="mr-2 h-4 w-4" />
-                      Download Image
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          <p>Powered by Vercel AI SDK and OpenAI DALL-E 3</p>
+              Clear chat
+            </button>
+          )}
         </div>
+      </header>
+
+      {/* Chat Container */}
+      <div className="flex-1 overflow-hidden max-w-4xl mx-auto w-full">
+        <ChatContainer 
+          messages={messages}
+          onRegenerate={handleRegenerate}
+          onDelete={handleDelete}
+          onSendMessage={handleSendMessage}
+        />
       </div>
-    </main>
+
+      {/* Input */}
+      <div className="max-w-4xl mx-auto w-full">
+        <ChatInput 
+          onSendMessage={handleSendMessage}
+          disabled={isGenerating}
+          placeholder={isGenerating ? "Generating image..." : "Describe an image to generate..."}
+        />
+      </div>
+    </div>
   );
 }
