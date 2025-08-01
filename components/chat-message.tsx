@@ -111,7 +111,7 @@ export function ChatMessage({ message, onRegenerate, onDelete }: ChatMessageProp
           </div>
         )}
 
-        {showImage && (
+        {showImage && message.image && (
           <div className="relative group">
             <img
               src={message.image.url}
