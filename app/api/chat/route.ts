@@ -42,5 +42,5 @@ export async function POST(request: Request) {
     system: 'You are a helpful AI assistant that helps users create image prompts. When a user asks for an image, enhance their prompt to be more descriptive and suitable for DALL-E 3.',
   });
 
-  return result.toDataStreamResponse();
+  return result.toTextStreamResponse();
 }
