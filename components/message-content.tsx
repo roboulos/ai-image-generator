@@ -19,9 +19,11 @@ export function MessageContent({ content, className }: MessageContentProps) {
         ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
         ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
         li: ({ children }) => <li className="mb-1">{children}</li>,
-        code: ({ node, inline, className, children, ...props }) => {
+        code: ({ children, className, ...props }) => {
           const match = /language-(\w+)/.exec(className || '');
-          return !inline && match ? (
+          const isInline = !match;
+          
+          return !isInline ? (
             <pre className="bg-muted p-3 rounded-md overflow-x-auto mb-2">
               <code className={cn('text-sm', className)} {...props}>
                 {children}
