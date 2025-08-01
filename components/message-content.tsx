@@ -11,10 +11,10 @@ interface MessageContentProps {
 
 export function MessageContent({ content, className }: MessageContentProps) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      className={cn('prose prose-sm dark:prose-invert max-w-none', className)}
-      components={{
+    <div className={cn('prose prose-sm dark:prose-invert max-w-none', className)}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
         ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
         ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
@@ -44,8 +44,9 @@ export function MessageContent({ content, className }: MessageContentProps) {
           </a>
         ),
       }}
-    >
-      {content}
-    </ReactMarkdown>
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
   );
 }
